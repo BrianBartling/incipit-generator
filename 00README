@@ -1,0 +1,2 @@
+RNN model for generating more incipits from the primus dataset.
+Used as training data input for an end-to-end OMR model.
