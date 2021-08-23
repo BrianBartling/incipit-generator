@@ -6,7 +6,7 @@ from time import time
 
 
 class OneStepModel(tf.keras.Model):
-    def __init__(self, corpus, set, vocabulary, checkpoint_dir, semantic=True, epochs=30, val_split=0.1, batch_size=64, buffer_size=10000, temperature=1.0):
+    def __init__(self, corpus, set, vocabulary, semantic=True, checkpoint_dir='./trained_model', epochs=30, val_split=0.1, batch_size=64, buffer_size=10000, temperature=1.0):
         super().__init__()
 
         # Parametrization
