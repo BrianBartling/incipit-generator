@@ -17,7 +17,7 @@ def generate_mask(word2int):
 
 
 class InitModel(tf.keras.Model):
-    def __init__(self, corpus, set, vocabulary, semantic=True, checkpoint_dir='./trained_model', dropout_rate=0.5,
+    def __init__(self, corpus, set, vocabulary, semantic=True, checkpoint_dir='./trained_model',
                 epochs=30, val_split=0.1, batch_size=64, buffer_size=10000):
         super().__init__()
 
@@ -33,8 +33,6 @@ class InitModel(tf.keras.Model):
         self.checkpoint_dir = checkpoint_dir
 
         self.epochs = epochs
-
-        self.dropout_rate = dropout_rate
 
         self.word2int = tf.keras.layers.experimental.preprocessing.StringLookup(
             vocabulary=self.vocabulary, num_oov_indices=0, mask_token=None
@@ -77,35 +75,13 @@ class InitModel(tf.keras.Model):
         # Number of RNN units
         rnn_units = 1024
 
-        self.model = self.LSTMModel(
+        dropout_rate = 0.5
+
+        self.model = LSTMModel(
             vocab_size=len(self.word2int.get_vocabulary()),
             embedding_dim=embedding_dim,
-            rnn_units=rnn_units)
-
-
-    class LSTMModel(tf.keras.Model):
-        def __init__(self, vocab_size, embedding_dim, rnn_units):
-            super().__init__(self)
-            self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-            forward_layer = tf.keras.layers.LSTM(rnn_units, return_sequences=True, return_state=True,dropout=self.dropout_rate)
-            backward_layer = tf.keras.layers.LSTM(rnn_units, activation='relu', return_sequences=True, return_state=True,
-                                                        go_backwards=True, dropout=self.dropout_rate)
-            self.rnn_outputs = tf.keras.layers.Bidirectional(forward_layer, backward_layer = backward_layer)
-            self.dense = tf.keras.layers.Dense(vocab_size)
-
-        def call(self, inputs, states=None, return_state=False, training=False):
-            x = inputs
-            x = self.embedding(x, training=training)
-            if states is None:
-                states = self.rnn_outputs.get_initial_state(x)
-            x, states = self.rnn_outputs(x, initial_state=states, training=training)
-            x = self.dense(x, training=training)
-
-            if return_state:
-                return x, states
-            else:
-                return x
-
+            rnn_units=rnn_units,
+            dropout_rate=dropout_rate)
 
     def train_model(self, loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer='adam'):
         self.model.compile(optimizer=optimizer, loss=loss)
@@ -145,6 +121,29 @@ class InitModel(tf.keras.Model):
         target_text = sequence[1:]
         return input_text, target_text
 
+
+class LSTMModel(tf.keras.Model):
+    def __init__(self, vocab_size, embedding_dim, rnn_units, dropout_rate):
+        super().__init__(self)
+        self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
+        forward_layer = tf.keras.layers.LSTM(rnn_units, return_sequences=True, return_state=True,dropout=dropout_rate)
+        backward_layer = tf.keras.layers.LSTM(rnn_units, activation='relu', return_sequences=True, return_state=True,
+                                                    go_backwards=True, dropout=dropout_rate)
+        self.rnn_outputs = tf.keras.layers.Bidirectional(forward_layer, backward_layer = backward_layer)
+        self.dense = tf.keras.layers.Dense(vocab_size)
+
+    def call(self, inputs, states=None, return_state=False, training=False):
+        x = inputs
+        x = self.embedding(x, training=training)
+        if states is None:
+            states = self.rnn_outputs.get_initial_state(x)
+        x, states = self.rnn_outputs(x, initial_state=states, training=training)
+        x = self.dense(x, training=training)
+
+        if return_state:
+            return x, states
+        else:
+            return x
 
 class OneStep(tf.keras.Model):
     def __init__(self, model, temperature=1.0):
