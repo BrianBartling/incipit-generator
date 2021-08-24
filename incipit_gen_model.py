@@ -125,19 +125,22 @@ class InitModel(tf.keras.Model):
 class LSTMModel(tf.keras.Model):
     def __init__(self, vocab_size, embedding_dim, rnn_units, dropout_rate):
         super().__init__(self)
+
+        self.rnn_units = rnn_units
+
         self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-        forward_layer = tf.keras.layers.LSTM(rnn_units, return_sequences=True, return_state=True,dropout=dropout_rate)
-        backward_layer = tf.keras.layers.LSTM(rnn_units, activation='relu', return_sequences=True, return_state=True,
-                                                    go_backwards=True, dropout=dropout_rate)
-        self.rnn_outputs = tf.keras.layers.Bidirectional(forward_layer, backward_layer = backward_layer)
+        self.lstm = tf.keras.layers.LSTM(self.rnn_units, return_sequences=True, return_state=True)
         self.dense = tf.keras.layers.Dense(vocab_size)
+
+    def initialize_hidden_state(self):
+        return [tf.zeros((self.rnn_units, self.rnn_units)) for i in range(4)]
 
     def call(self, inputs, states=None, return_state=False, training=False):
         x = inputs
         x = self.embedding(x, training=training)
         if states is None:
-            states = self.rnn_outputs.get_initial_state(x)
-        x, states = self.rnn_outputs(x, initial_state=states, training=training)
+            states = self.lstm.get_initial_state(x)
+        x, states = self.lstm(x, initial_state=states, training=training)
         x = self.dense(x, training=training)
 
         if return_state:
